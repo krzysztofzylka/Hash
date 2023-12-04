@@ -1,0 +1,19 @@
+{
+    "name": "krzysztofzylka/hash",
+    "description": "Hash library",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Krzysztofzylka\\Hash\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Krzysztof Zylka",
+            "email": "krzysztofzylka@yahoo.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {}
+}
