@@ -1,8 +1,9 @@
 {
     "name": "krzysztofzylka/hash",
-    "description": "Hash library",
+    "description": "Versioned hash library with multiple algorithm support",
     "type": "library",
     "license": "MIT",
+    "keywords": ["hash", "crypto", "versioned", "security", "pbkdf2", "argon2"],
     "autoload": {
         "psr-4": {
             "Krzysztofzylka\\Hash\\": "src/"
