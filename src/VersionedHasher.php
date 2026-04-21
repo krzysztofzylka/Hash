@@ -6,7 +6,7 @@ use Exception;
 
 /**
  * Versioned hash library with multiple algorithm support
- * Uses Argon2id as the most secure default algorithm (2024 standard)
+ * Uses Argon2id as the most secure default algorithm
  */
 class VersionedHasher
 {
@@ -53,7 +53,7 @@ class VersionedHasher
     /**
      * Create versioned hash with the most secure algorithm by default
      * @param string $data Data to hash
-     * @param string $algorithm Algorithm name (default: argon2id - most secure 2024)
+     * @param string $algorithm Algorithm name (default: argon2id)
      * @param array $options Algorithm options
      * @return string Versioned hash string
      * @throws Exception
@@ -71,18 +71,17 @@ class VersionedHasher
     }
 
     /**
-     * Create password hash with recommended settings for 2024
+     * Create password hash with recommended settings
      * @param string $password Password to hash
      * @param array $options Custom options
      * @return string Secure hash
      */
     public static function createSecure(string $password, array $options = []): string
     {
-        // Default Argon2id options for 2024
         $defaultOptions = [
-            'memory_cost' => 65536, // 64 MB
-            'time_cost' => 4,       // 4 iterations
-            'threads' => 3          // 3 threads
+            'memory_cost' => 65536,
+            'time_cost' => 4,
+            'threads' => 3
         ];
 
         $mergedOptions = array_merge($defaultOptions, $options);
@@ -99,12 +98,10 @@ class VersionedHasher
      */
     public static function verify(string $hash, string $data): bool
     {
-        // Check if it's a PHP password_hash format
         if (self::isNativePasswordHash($hash)) {
             return password_verify($data, $hash);
         }
 
-        // Check if it's our versioned format
         if (!preg_match('/^\$(\d{3})\$(.+)$/', $hash, $matches)) {
             return false;
         }
@@ -118,14 +115,14 @@ class VersionedHasher
         }
 
         try {
-            // For password_hash algorithms, use password_verify
             if (in_array($algorithm, ['argon2id', 'argon2i', 'bcrypt', 'scrypt']) &&
                 self::isNativePasswordHash($hashValue)) {
+
                 return password_verify($data, $hashValue);
             }
 
-            // For other algorithms, compare hashes
             $expectedHash = self::create($data, $algorithm);
+
             return hash_equals($expectedHash, $hash);
         } catch (Exception $e) {
             return false;
@@ -147,40 +144,42 @@ class VersionedHasher
                 if (!defined('PASSWORD_ARGON2ID')) {
                     throw new Exception('Argon2ID is not available in this PHP version');
                 }
+
                 $defaultOptions = [
                     'memory_cost' => 65536, // 64 MB
                     'time_cost' => 4,
                     'threads' => 3
                 ];
+
                 return password_hash($data, PASSWORD_ARGON2ID, array_merge($defaultOptions, $options));
 
             case 'argon2i':
                 if (!defined('PASSWORD_ARGON2I')) {
                     throw new Exception('Argon2I is not available in this PHP version');
                 }
+
                 $defaultOptions = [
                     'memory_cost' => 65536,
                     'time_cost' => 4,
                     'threads' => 3
                 ];
+
                 return password_hash($data, PASSWORD_ARGON2I, array_merge($defaultOptions, $options));
 
             case 'bcrypt':
-                $cost = $options['cost'] ?? 12; // Increased from 10 to 12 for 2024
+                $cost = $options['cost'] ?? 12; // Increased from 10 to 12
                 return password_hash($data, PASSWORD_BCRYPT, ['cost' => $cost]);
 
             case 'scrypt':
-                // PHP doesn't have native scrypt in password_hash, use hash extension
                 if (!in_array('scrypt', hash_algos())) {
                     throw new Exception('Scrypt is not available on this system');
                 }
                 $salt = $options['salt'] ?? random_bytes(32);
-                $n = $options['n'] ?? 16384;      // CPU/memory cost
-                $r = $options['r'] ?? 8;          // Block size
-                $p = $options['p'] ?? 1;          // Parallelization
+                $n = $options['n'] ?? 16384;
+                $r = $options['r'] ?? 8;
+                $p = $options['p'] ?? 1;
                 $length = $options['length'] ?? 64;
 
-                // Using hash_hkdf as PHP doesn't have native scrypt password_hash
                 return base64_encode($salt) . '$' . hash('scrypt', $data . $salt);
 
             case 'md5':
@@ -213,10 +212,8 @@ class VersionedHasher
         }
     }
 
-    // ... reszta metod pozostaje bez zmian ...
-
     /**
-     * Get recommended algorithm for passwords (2024)
+     * Get recommended algorithm for passwords
      * @return string
      */
     public static function getRecommendedAlgorithm(): string
@@ -233,7 +230,7 @@ class VersionedHasher
             return 'bcrypt';
         }
 
-        return 'pbkdf2'; // Fallback
+        return 'pbkdf2';
     }
 
     /**
@@ -257,22 +254,18 @@ class VersionedHasher
      */
     public static function needsRehash(string $hash, string $preferredAlgorithm = 'argon2id'): bool
     {
-        // Handle native PHP password_hash formats
         if (self::isNativePasswordHash($hash)) {
             try {
                 $currentAlgorithm = self::detectNativeAlgorithm($hash);
 
-                // Always recommend upgrade to Argon2id
                 if ($currentAlgorithm !== 'argon2id' && $preferredAlgorithm === 'argon2id') {
                     return true;
                 }
 
-                // Check if current algorithm matches preferred
                 if ($currentAlgorithm !== $preferredAlgorithm) {
                     return true;
                 }
 
-                // For bcrypt, check if cost is too low (should be at least 12 in 2024)
                 if ($currentAlgorithm === 'bcrypt') {
                     $info = password_get_info($hash);
                     return isset($info['options']['cost']) && $info['options']['cost'] < 12;
@@ -284,20 +277,21 @@ class VersionedHasher
             }
         }
 
-        // Handle our versioned format
         if (!preg_match('/^\$(\d{3})\$/', $hash, $matches)) {
             return true;
         }
 
         $currentAlgorithm = self::getAlgorithmByVersion($matches[1]);
 
-        // Always recommend Argon2id upgrade
         return $currentAlgorithm !== $preferredAlgorithm ||
             self::$algorithms[$currentAlgorithm]['strength'] === 'low' ||
             !self::$algorithms[$currentAlgorithm]['secure'];
     }
 
-    // Pozostałe metody jak wcześniej...
+    /**
+     * @param string $hash
+     * @return bool
+     */
     protected static function isNativePasswordHash(string $hash): bool
     {
         return preg_match('/^\$2[ayb]\$\d{2}\$/', $hash) ||
@@ -305,20 +299,32 @@ class VersionedHasher
             str_starts_with($hash, '$argon2id$');
     }
 
+    /**
+     * @param string $hash
+     * @return string
+     * @throws Exception
+     */
     protected static function detectNativeAlgorithm(string $hash): string
     {
         if (preg_match('/^\$2[ayb]\$/', $hash)) {
             return 'bcrypt';
         }
+
         if (str_starts_with($hash, '$argon2i$')) {
             return 'argon2i';
         }
+
         if (str_starts_with($hash, '$argon2id$')) {
             return 'argon2id';
         }
+
         throw new Exception('Unable to detect algorithm from native hash');
     }
 
+    /**
+     * @param string $algorithm
+     * @return bool
+     */
     public static function isAlgorithmSupported(string $algorithm): bool
     {
         if (!isset(self::$algorithms[$algorithm])) {
@@ -343,6 +349,10 @@ class VersionedHasher
         }
     }
 
+    /**
+     * @param string $version
+     * @return string|null
+     */
     protected static function getAlgorithmByVersion(string $version): ?string
     {
         foreach (self::$algorithms as $algorithm => $config) {
@@ -350,9 +360,13 @@ class VersionedHasher
                 return $algorithm;
             }
         }
+
         return null;
     }
 
+    /**
+     * @return array
+     */
     public static function getSupportedAlgorithms(): array
     {
         return array_filter(
@@ -361,6 +375,9 @@ class VersionedHasher
         );
     }
 
+    /**
+     * @return array
+     */
     public static function getSecureAlgorithms(): array
     {
         return array_keys(array_filter(
@@ -370,12 +387,18 @@ class VersionedHasher
         ));
     }
 
+    /**
+     * @param string $hash
+     * @return array|string[]
+     */
     public static function getHashInfo(string $hash): array
     {
         if (self::isNativePasswordHash($hash)) {
             $info = password_get_info($hash);
+
             try {
                 $algorithm = self::detectNativeAlgorithm($hash);
+
                 return [
                     'format' => 'native',
                     'algorithm' => $algorithm,
